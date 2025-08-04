@@ -28,6 +28,7 @@ It’s an ideal starting point for experimenting with AI-driven hardware interac
 ---
 
 ## Project Structure
+```text
 ai-arm-drawing/
 │
 ├── arduino/
@@ -42,8 +43,8 @@ ai-arm-drawing/
 ├── README.md                 # Project documentation
 ├── .gitignore                # Git ignore rules
 └── LICENSE                   # Project license
+```
 
----
 
 ## Getting Started
 
