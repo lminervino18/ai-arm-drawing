@@ -28,7 +28,7 @@ It’s an ideal starting point for experimenting with AI-driven hardware interac
 ---
 
 ## Project Structure
-\`\`\`text
+```text
 ai-arm-drawing/
 │
 ├── arduino/
@@ -43,7 +43,7 @@ ai-arm-drawing/
 ├── README.md                 # Project documentation
 ├── .gitignore                # Git ignore rules
 └── LICENSE                   # Project license
-\`\`\`
+```
 
 ---
 
@@ -62,25 +62,25 @@ ai-arm-drawing/
 - OpenAI API key
 
 ### 3. Install Python dependencies
-\`\`\`bash
+```bash
 pip install -r python/requirements.txt
-\`\`\`
+```
 
 ### 4. Set your API key
-\`\`\`bash
+```bash
 export OPENAI_API_KEY="your_api_key_here"  # Linux/Mac
 set OPENAI_API_KEY="your_api_key_here"     # Windows
-\`\`\`
+```
 
 ### 5. Upload Arduino code
-Open \`arduino/robotic_hand.ino\` in Arduino IDE, select your board and port, then upload.
+Open `arduino/robotic_hand.ino` in Arduino IDE, select your board and port, then upload.
 
 ### 6. Run the Python script
-\`\`\`bash
+```bash
 python python/main.py
-\`\`\`
+```
 
 ---
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file
