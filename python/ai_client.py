@@ -30,13 +30,4 @@ def chat_with_ai(prompt: str) -> str:
     # Return the generated text
     return response.text.strip()
 
-if __name__ == "__main__":
-    print("Type your message (or 'exit' to quit):")
-    while True:
-        user_input = input("You: ")
-        if user_input.lower() in ["exit", "quit"]:
-            print("Exiting chat...")
-            break
-        
-        ai_response = chat_with_ai(user_input)
-        print("AI:", ai_response)
+
