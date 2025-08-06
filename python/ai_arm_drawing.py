@@ -46,12 +46,6 @@ def validate_input(ai_response):
 
     return instructions
 
-
-def print_ascii_arm():
-    print(r"""
-      ████  IA DRAW ARM  ████
-    """)
-
 def get_valid_response(prompt):
     retries = 0
     while True:
@@ -114,12 +108,10 @@ def main():
         "Now respond to this prompt: "
     )
 
-    print_ascii_arm()
-    print("AI Chat - Type 'exit' to quit")
+    
+    print("Type 'exit' to quit")
     while True:
-        print("="*40)
-        print("Prompt to draw with IA ARMY")
-        print("="*40)
+        print("Prompt to draw with IA ARMY\n")
         user_input = input("> ")
         if user_input.lower() in ["exit", "quit"]:
             print("Exiting chat...")
