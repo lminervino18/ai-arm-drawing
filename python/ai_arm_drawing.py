@@ -1,4 +1,5 @@
 from ai_client import chat_with_ai
+from servo_math import process_absolute_points
 import os
 import time
 
@@ -121,6 +122,10 @@ def main():
         print("\n✅ Numeric matrix of instructions:")
         for instr in instructions:
             print(instr)
+        angles = process_absolute_points(instructions)
+        print("\n✅ Angles for the robotic arm:")
+        for angle in angles:
+            print(angle)    
 
 if __name__ == "__main__":
     main()
