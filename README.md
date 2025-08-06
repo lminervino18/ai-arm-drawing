@@ -29,7 +29,7 @@ It’s an ideal starting point for experimenting with AI-driven hardware interac
 
 ## High-Level Architecture
 
-![High-level diagram](design/high-level-diagram)
+![High-level diagram](design/high-level-diagram.jpg)
 
 ---
 
