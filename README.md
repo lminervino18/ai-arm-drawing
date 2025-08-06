@@ -1,86 +1,177 @@
-# AI Arm Drawing 🤖✍️
-AI-powered robotic arm that draws based on natural language instructions.
+# 🤖 AI Drawing Arm
 
-## Description
-**AI Arm Drawing** is a robotic arm project powered by Artificial Intelligence that can draw based on natural language instructions.  
-The system uses an Arduino-controlled 4DOF robotic arm to hold a pen and create shapes, patterns, or sketches.  
-A Python program sends user prompts to an AI model (such as OpenAI’s GPT) to convert them into simple movement commands.  
-These commands are then sent to the robotic arm, allowing it to draw autonomously.
+AI-powered robotic arm that interprets natural language prompts and draws symbolic figures on a 14×10 grid whiteboard using OpenAI.
 
-This project combines **robotics**, **AI-powered instruction parsing**, and **servo-based motion control**.  
-It’s an ideal starting point for experimenting with AI-driven hardware interactions, creative robotics, and physical computing.
+---
+
+## 📝 Project Description
+
+**AI Drawing Arm** is a robotic system that takes natural language prompts (like "draw a frog") and autonomously creates symbolic drawings on a 14×10 grid (7×5 cm) whiteboard.  
+The pipeline uses **OpenAI's GPT** model to convert user prompts into vector-based instructions, then applies **inverse kinematics** to control a dual-arm mechanical structure with two servo motors.
+
+This project combines **natural language processing**, **motion planning**, and **hardware control** to simulate intelligent robotic drawing.
+
+---
+
+## 🧩 How It Works
+
+1. **Input:**  
+   The user writes a prompt (e.g., "draw a square").
+
+2. **AI Translation:**  
+   OpenAI returns a list of vector drawing instructions, e.g.:
+   ```
+   0 2 3
+   1 4 0
+   1 0 4
+   1 -4 0
+   ```
+   - Each line: `<draw_flag> <delta_x> <delta_y>`
+   - The pen starts at (0, 0) (bottom-left of the grid).
+
+3. **Validation:**  
+   Instructions are checked to ensure they stay within the 14×10 grid and are well-formed.
+
+4. **Kinematics:**  
+   Each grid position is converted to `(x, y)` in cm and mapped to servo angles using inverse kinematics.
+
+5. **Output:**  
+   A set of angles and pen commands is generated to control the robot arm.
+
+---
+
+## 🔧 Hardware Setup
+
+The system simulates or controls a 2-arm robotic mechanism, each with 2 degrees of freedom:
+
+| Arm       | Segment 1 (Upper) | Segment 2 (Lower) | Servo Mount Location |
+|-----------|-------------------|-------------------|---------------------|
+| Left Arm  | 6.0 cm            | 6.0 cm            | (5.0 cm, 5.0 cm)    |
+| Right Arm | 6.0 cm            | 6.0 cm            | (10.0 cm, 5.0 cm)   |
+
+- Each arm consists of two servos (total 4 servos).
+- The tip of both arms converges on a shared pen mechanism.
+- A microcontroller (e.g., Arduino or ESP32) actuates the motors based on calculated angles.
+
+---
+
+## 🛠️ Software Stack
+
+- **Python:** Core logic (prompting, validation, kinematics)
+- **OpenAI API:** Natural language processing
+- **NumPy:** Vector math for servo angle calculation
+- **Serial (optional):** Send data to Arduino
 
 ---
 
 ## Features
-- Converts natural language into drawing commands.
-- Controls a 4DOF robotic arm with Arduino.
-- Supports easy calibration and manual control via joystick.
-- Modular Python and Arduino code for easy extension.
+
+- Converts natural language into drawing commands
+- Validates instructions to ensure safe, in-bounds operation
+- Inverse kinematics for dual-arm control
+- Controls a 4DOF robotic arm with Arduino or ESP32
+- Optional GUI for live drawing preview
+- Modular codebase (AI, logic, and hardware separate)
 
 ---
 
-## Possible Applications
-- AI-assisted art creation.
-- Educational robotics.
-- Automated sketching and diagram drawing.
+## Applications
+
+- AI-assisted drawing or sketching
+- Educational demos for robotics and kinematics
+- Natural language–controlled robots
 
 ---
 
-## Project Structure
+## 📁 Project Structure
+
 ```text
 ai-arm-drawing/
 │
 ├── arduino/
-│   └── robotic_hand.ino      # Arduino code to control servos
+│   └── robotic_hand.ino          # Arduino code for servo control
+│
+├── design/
+│   └── arm.png                   # Robot arm illustration (for docs)
 │
 ├── python/
-│   ├── main.py               # Main Python script
-│   ├── ai_client.py          # AI API integration
-│   ├── serial_client.py      # Serial communication with Arduino
-│   └── requirements.txt      # Python dependencies
+│   ├── ai_client.py              # OpenAI client interface
+│   ├── main.py                   # Terminal version
+│   ├── servo_math.py             # Inverse kinematics calculations
+│   ├── requirements.txt          # Python dependencies
 │
-├── README.md                 # Project documentation
-├── .gitignore                # Git ignore rules
-└── LICENSE                   # Project license
+├── .env                          # Contains API key (not committed)
+├── .gitignore                    # Git ignore rules
+├── LICENSE                       # MIT license
+└── README.md                     # Project documentation
 ```
 
----
+--- 
 
-## Getting Started
+## 🚀 Getting Started
 
 ### 1. Hardware Requirements
-- Arduino UNO (included in kit)
-- 4DOF robotic arm with servos (MG90S)
-- Joystick controller (optional for manual control)
-- USB cable for Arduino
-- 5V power supply for servos
+- Arduino UNO or ESP32
+- 4 servos (e.g., MG90S)
+- Breadboard + power supply
+- Optional: Joystick module for manual mode
 
 ### 2. Software Requirements
+- Python 3.9+
 - Arduino IDE
-- Python 3.9+  
 - OpenAI API key
 
-### 3. Install Python dependencies
+### 3. Install Python Dependencies
 ```bash
 pip install -r python/requirements.txt
 ```
 
-### 4. Set your API key
+### 4. Set your OpenAI API key
 ```bash
-export OPENAI_API_KEY="your_api_key_here"  # Linux/Mac
-set OPENAI_API_KEY="your_api_key_here"     # Windows
+export OPENAI_API_KEY="sk-..."     # Linux / Mac
+set OPENAI_API_KEY="sk-..."        # Windows
+```
+Or store it in a `.env` file:
+```
+OPENAI_API_KEY=sk-...
 ```
 
-### 5. Upload Arduino code
-Open `arduino/robotic_hand.ino` in Arduino IDE, select your board and port, then upload.
+### 5. Upload Arduino Code
+Open `arduino/robotic_hand.ino` in the Arduino IDE, choose your board and port, and upload.
 
-### 6. Run the Python script
+### 6. Run Python Interface
 ```bash
-python python/main.py
+python python/main.py              # Terminal version
+python python/ai_arm_drawing.py    # GUI version
 ```
 
 ---
 
-## License
-This project is licensed under the MIT License - see the LICENSE file
+## 📐 High-Level Architecture
+
+![High-level diagram](design/high-level-diagram.jpg)
+
+```text
+User Prompt
+    │
+    ▼
+OpenAI GPT (gpt-3.5 or gpt-4)
+    │
+    ▼
+Drawing Instructions (vector format)
+    │
+    ▼
+Validation & Kinematics (Python)
+    │
+    ▼
+Servo Angles & Pen Commands
+    │
+    ▼
+Robotic Arm (Arduino/ESP32)
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the LICENSE file.
