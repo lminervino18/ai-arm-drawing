@@ -60,7 +60,6 @@ The system simulates or controls a 2-arm robotic mechanism, each with 2 degrees 
 - **Python:** Core logic (prompting, validation, kinematics)
 - **OpenAI API:** Natural language processing
 - **NumPy:** Vector math for servo angle calculation
-- **Tkinter:** GUI for input and drawing preview (optional)
 - **Serial (optional):** Send data to Arduino
 
 ---
@@ -93,10 +92,9 @@ ai-arm-drawing/
 │   └── robotic_hand.ino          # Arduino code for servo control
 │
 ├── design/
-│   └── arm.png                   # Robot arm illustration (used in GUI)
+│   └── arm.png                   # Robot arm illustration (for docs)
 │
 ├── python/
-│   ├── ai_arm_drawing.py         # GUI version (Tkinter)
 │   ├── ai_client.py              # OpenAI client interface
 │   ├── main.py                   # Terminal version
 │   ├── servo_math.py             # Inverse kinematics calculations
@@ -108,7 +106,7 @@ ai-arm-drawing/
 └── README.md                     # Project documentation
 ```
 
----
+--- 
 
 ## 🚀 Getting Started
 
