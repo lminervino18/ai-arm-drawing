@@ -149,7 +149,7 @@ python python/ai_arm_drawing.py    # GUI version
 
 ## 📐 High-Level Architecture
 
-![High-level diagram](design/high-level-diagram.jpg)
+![High-level diagram](design/high-level-diagram.png)
 
 ```text
 User Prompt
