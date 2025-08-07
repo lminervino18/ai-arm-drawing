@@ -1,5 +1,6 @@
 from ai_client import chat_with_ai
 from servo_math import process_absolute_points
+from serial_sender import send_angle_sequence
 import os
 import time
 
@@ -10,12 +11,8 @@ def validate_input(ai_response):
 
     for idx, line in enumerate(lines):
         line_clean = line.strip().lower()
-
-        # Skip empty lines
         if not line_clean:
             continue
-
-        # Reject any line with unwanted keywords
         if any(bad_word in line_clean for bad_word in invalid_keywords):
             print(f"Invalid line {idx+1}: contains non-instructional text.")
             return False
@@ -65,6 +62,18 @@ def get_valid_response(prompt):
             print(f"Retrying... attempt #{retries}")
             time.sleep(1)
 
+def deltas_to_absolute(instructions):
+    """
+    Convert relative movement instructions to absolute grid coordinates.
+    """
+    absolute_points = []
+    x = y = 0
+    for draw_flag, dx, dy in instructions:
+        x += dx
+        y += dy
+        absolute_points.append((draw_flag == 1, x, y))  # draw_flag as boolean
+    return absolute_points
+
 def main():
     instructions_prompt = (
         "You are a robotic arm that draws on a 14×10 grid (14 columns, 10 rows).\n"
@@ -109,7 +118,6 @@ def main():
         "Now respond to this prompt: "
     )
 
-    
     print("Type 'exit' to quit")
     while True:
         print("Prompt to draw with IA ARMY\n")
@@ -117,15 +125,25 @@ def main():
         if user_input.lower() in ["exit", "quit"]:
             print("Exiting chat...")
             break
+
         full_prompt = instructions_prompt + user_input
         instructions = get_valid_response(full_prompt)
+
         print("\n✅ Numeric matrix of instructions:")
         for instr in instructions:
             print(instr)
-        angles = process_absolute_points(instructions)
+
+        absolute_points = deltas_to_absolute(instructions)
+        angles = process_absolute_points(absolute_points)
+
         print("\n✅ Angles for the robotic arm:")
         for angle in angles:
-            print(angle)    
+            print(angle)
+
+        print(f"\n✅ Reached {len(angles)}/{len(absolute_points)} points.")
+
+        # Send to Arduino using external module
+        send_angle_sequence(angles, port="/dev/ttyUSB0")  # Change port if needed
 
 if __name__ == "__main__":
     main()
