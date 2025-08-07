@@ -1,50 +1,105 @@
 from ai_client import chat_with_ai
 from servo_math import process_absolute_points
 from serial_sender import send_angle_sequence
-import os
+from plot_drawing import plot_drawing
 import time
 
+GRID_WIDTH = 14
+GRID_HEIGHT = 10
+
 def validate_input(ai_response):
-    invalid_keywords = ["answer", "sure", "let me", "here is", "drawing", "instructions", "this is"]
     instructions = []
     lines = ai_response.strip().splitlines()
 
     for idx, line in enumerate(lines):
-        line_clean = line.strip().lower()
+        line_clean = line.strip()
         if not line_clean:
             continue
-        if any(bad_word in line_clean for bad_word in invalid_keywords):
-            print(f"Invalid line {idx+1}: contains non-instructional text.")
-            return False
-
-        parts = line.strip().split()
+        parts = line_clean.split()
         if len(parts) != 3:
-            print(f"Error: Line {idx+1} must have exactly 3 elements.")
+            print(f"Error: Line {idx+1} must have 3 parts.")
             return False
         try:
             draw_flag = int(parts[0])
-            dx = int(parts[1])
-            dy = int(parts[2])
+            x = int(parts[1])
+            y = int(parts[2])
         except ValueError:
-            print(f"Error: Line {idx+1} contains non-integer values.")
+            print(f"Error: Line {idx+1} has non-integer value.")
             return False
         if draw_flag not in (0, 1):
-            print(f"Error: Line {idx+1} draw_flag must be 0 or 1.")
+            print(f"Error: Line {idx+1}, invalid draw_flag.")
             return False
-        instructions.append((draw_flag, dx, dy))
+        if not (0 <= x < GRID_WIDTH and 0 <= y < GRID_HEIGHT):
+            print(f"Error: Line {idx+1} point ({x},{y}) out of bounds.")
+            return False
 
-    x = y = 0
-    for idx, (draw_flag, dx, dy) in enumerate(instructions):
-        x_new = x + dx
-        y_new = y + dy
-        if not (0 <= x_new < 14 and 0 <= y_new < 10):
-            print(f"Error: Movement on line {idx+1} goes out of bounds ({x_new}, {y_new}).")
+        flag_bool = (draw_flag == 1)
+        if flag_bool and instructions and instructions[-1] == (True, x, y):
+            print(f"Error: Line {idx+1} duplicates previous draw point.")
             return False
-        x, y = x_new, y_new
+
+        instructions.append((flag_bool, x, y))
+
+    if not instructions:
+        print("Error: No instructions found.")
+        return False
+
+    if instructions[0][0]:
+        print("Error: First instruction must not draw from origin.")
+        return False
 
     return instructions
 
-def get_valid_response(prompt):
+def ask_for_correction(previous_output, user_prompt):
+    correction_prompt = (
+    "You are a visual design assistant helping improve symbolic drawings made by a robotic arm on a 14×10 grid.\n"
+    "The grid is composed of 14 columns and 10 rows (each cell is 0.5 cm), forming a 7×5 cm drawing surface.\n"
+    "The robotic arm receives absolute-position drawing instructions in this format:\n"
+    "<draw_flag> <x> <y>\n"
+    "- draw_flag: 1 = draw a straight line from the current position to (x, y)\n"
+    "- draw_flag: 0 = move without drawing (pen lifted)\n"
+    "- x and y are grid coordinates (0 ≤ x < 14, 0 ≤ y < 10)\n"
+    "- The robot always starts at (0, 0)\n"
+    "\n"
+    "The following instruction list was generated from the prompt:\n"
+    f"\"{user_prompt}\"\n\n"
+    "Your job is to refine this list to improve clarity, structure, and visual consistency.\n"
+    "\n"
+    "🧠 RULES FOR CORRECTION:\n"
+    "- The first instruction must always be draw_flag = 0 (a movement from origin, not a drawing).\n"
+    "- Respect the original intent of each draw_flag — do NOT convert movements (0) into drawing (1) unless clearly incorrect.\n"
+    "- Only use draw_flag = 1 when a straight-line drawing is intentional and meaningful.\n"
+    "- Use draw_flag = 0 to jump between disconnected elements — do not draw unnecessary connectors.\n"
+    "- Avoid overlapping or redundant lines (e.g., repeating the same point or unnecessary backtracking).\n"
+    "- Improve coherence, clarity, and symbolic integrity of the figure.\n"
+    "- Close open shapes when it adds visual meaning, and center the drawing within the grid.\n"
+    "\n"
+    "📌 IMPORTANT:\n"
+    "- All coordinates must be valid: 0 ≤ x < 14 and 0 ≤ y < 10.\n"
+    "- Instructions must follow this format exactly: <draw_flag> <x> <y>\n"
+    "- Do NOT include any explanation, titles, or extra content — only return the corrected list.\n"
+    "\n"
+    "Current instruction list:\n"
+    f"{previous_output.strip()}\n\n"
+    "✏️ Return the corrected list below:"
+)
+
+    return chat_with_ai(correction_prompt)
+
+def auto_close_shape(points):
+    if not points:
+        return points
+    drawn = [p for p in points if p[0]]
+    if len(drawn) < 2:
+        return points
+    first = drawn[0][1:]
+    last = drawn[-1][1:]
+    if last != first:
+        points.append((True, *first))
+        print(f"Auto-closing shape: added line from {last} to {first}")
+    return points
+
+def get_valid_response(prompt, user_prompt):
     retries = 0
     while True:
         try:
@@ -54,96 +109,65 @@ def get_valid_response(prompt):
             time.sleep(5)
             continue
 
-        instructions = validate_input(response)
-        if instructions is not False:
-            return instructions
+        instr = validate_input(response)
+        if instr:
+            reviewed = ask_for_correction(response, user_prompt)
+            reviewed_instr = validate_input(reviewed)
+            final = reviewed_instr or instr
+            return auto_close_shape(final)
         else:
             retries += 1
-            print(f"Retrying... attempt #{retries}")
+            print(f"Retrying generation... attempt {retries}")
             time.sleep(1)
 
-def deltas_to_absolute(instructions):
-    """
-    Convert relative movement instructions to absolute grid coordinates.
-    """
-    absolute_points = []
-    x = y = 0
-    for draw_flag, dx, dy in instructions:
-        x += dx
-        y += dy
-        absolute_points.append((draw_flag == 1, x, y))  # draw_flag as boolean
-    return absolute_points
-
 def main():
+    
     instructions_prompt = (
-        "You are a robotic arm that draws on a 14×10 grid (14 columns, 10 rows).\n"
-        "Each cell is 0.5 cm, forming a 7 cm × 5 cm whiteboard.\n"
-        "You always start at (0, 0), the bottom-left corner of the grid.\n"
-        "\n"
-        "Your job is to convert a prompt (e.g., 'draw a cat', 'write 3') into a list of movement instructions to draw that figure.\n"
-        "\n"
-        "⚠️ VERY IMPORTANT RULES:\n"
-        "1. Your output must be ONLY movement instructions — no titles, explanations, or extra lines.\n"
-        "2. Each instruction must follow this format (one per line):\n"
-        "   <draw_flag> <delta_x> <delta_y>\n"
-        "3. draw_flag: 1 = draw a straight line, 0 = move without drawing\n"
-        "4. delta_x: horizontal movement (right = positive, left = negative)\n"
-        "5. delta_y: vertical movement (up = positive, down = negative)\n"
-        "\n"
-        "✅ VALIDATION RULES:\n"
-        "- Start from position (0, 0).\n"
-        "- After each step, update your current position.\n"
-        "- DO NOT let the new position go outside the grid: 0 <= x < 14 and 0 <= y < 10.\n"
-        "- Track your position while generating instructions to ensure it always stays within bounds.\n"
-        "- If any move would exceed the grid, CHANGE it to stay within the limits.\n"
-        "\n"
-        "✏️ Use many steps (20–40) to create symbolic but clear shapes.\n"
-        "🎯 Center the figure within the grid as much as possible.\n"
-        "📐 Use diagonal lines when needed. Only straight segments.\n"
-        "\n"
-        "Your response MUST be ONLY the raw list of instructions.\n"
-        "Nothing else. No bullet points. No intro. No explanation.\n"
-        "\n"
-        "---\n"
-        "\n"
-        "Example input:\n"
-        "\"draw a square\"\n"
-        "Example output:\n"
-        "0 3 1\n"
-        "1 8 0\n"
-        "1 0 8\n"
-        "1 -8 0\n"
-        "1 0 -8\n"
-        "\n"
-        "Now respond to this prompt: "
-    )
+    "You are a robotic arm drawing on a 14×10 grid (14 columns, 10 rows).\n"
+    "Each cell is 0.5 cm, forming a 7 cm × 5 cm whiteboard.\n"
+    "\n"
+    "Your task is to convert a drawing prompt into a coherent set of movement instructions.\n"
+    "Follow this 3-step process:\n"
+    "\n"
+    "1. PLAN: Decide the main points and shape layout before generating any instructions.\n"
+    "2. GENERATE: Create a list of absolute instructions in this format:\n"
+    "   <draw_flag> <x> <y>\n"
+    "   Where draw_flag is 1 to draw a line or 0 to move without drawing.\n"
+    "   Each point (x, y) must be within: 0 ≤ x < 14 and 0 ≤ y < 10.\n"
+    "   ⚠️ The first instruction must always be draw_flag = 0 (move from origin).\n"
+    "3. REVIEW AND FIX:\n"
+    "   - Ensure all points are inside grid boundaries.\n"
+    "   - The first instruction must be a movement (pen lifted) from (0, 0).\n"
+    "   - Avoid broken strokes, unfinished figures, or abrupt endings.\n"
+    "   - Avoid excessive jumping or unnecessary noise.\n"
+    "\n"
+    "Only output the final list of corrected instructions, with no explanations or commentary.\n"
+    "\n"
+    "---\n"
+    "\n"
+    "Prompt: "
+)
+
 
     print("Type 'exit' to quit")
     while True:
-        print("Prompt to draw with IA ARMY\n")
-        user_input = input("> ")
+        user_input = input("Draw prompt> ")
         if user_input.lower() in ["exit", "quit"]:
-            print("Exiting chat...")
             break
 
-        full_prompt = instructions_prompt + user_input
-        instructions = get_valid_response(full_prompt)
+        points = get_valid_response(instructions_prompt + user_input, user_input)
+        print("\nFinal points:")
+        for p in points:
+            print(p)
 
-        print("\n✅ Numeric matrix of instructions:")
-        for instr in instructions:
-            print(instr)
+        plot_drawing(points)
+        angles = process_absolute_points(points)
+        print("\nServo angles:")
+        for ang in angles:
+            print(ang)
 
-        absolute_points = deltas_to_absolute(instructions)
-        angles = process_absolute_points(absolute_points)
-
-        print("\n✅ Angles for the robotic arm:")
-        for angle in angles:
-            print(angle)
-
-        print(f"\n✅ Reached {len(angles)}/{len(absolute_points)} points.")
-
-        # Send to Arduino using external module
-        send_angle_sequence(angles, port="/dev/ttyUSB0")  # Change port if needed
+        print(f"Executing {len(angles)}/{len(points)} points...")
+        send_angle_sequence(angles, port="/dev/ttyUSB0")
 
 if __name__ == "__main__":
     main()

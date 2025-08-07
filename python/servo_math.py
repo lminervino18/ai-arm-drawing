@@ -2,6 +2,7 @@ import numpy as np
 
 CELL_SIZE = 0.5  # cm per cell
 
+# Servo positions on the board
 X_SERVO_2 = 10
 Y_SERVO_2 = 5
 
@@ -9,18 +10,18 @@ X_SERVO_1 = 5
 Y_SERVO_1 = 5
 
 # Arm segment lengths [cm]
-left_upper_arm = 6.0  # L1
-left_lower_arm = 6.0  # R1
-right_upper_arm = 6.0  # L2
-right_lower_arm = 6.0  # R2
+left_upper_arm = 6.0
+left_lower_arm = 6.0
+right_upper_arm = 6.0
+right_lower_arm = 6.0
 
-# Servo positions
+# Servo base positions
 servo_positions = np.array([
     [X_SERVO_1, Y_SERVO_1],
     [X_SERVO_2, Y_SERVO_2]
 ])
 
-# Arm lengths
+# Segment lengths per arm
 arm_lengths = np.array([
     [left_upper_arm, left_lower_arm],
     [right_upper_arm, right_lower_arm]
@@ -28,30 +29,31 @@ arm_lengths = np.array([
 
 def compute_inverse_kinematics(x, y):
     """
-    Calculate the angles for the two arms to reach the point (x, y).
-    Returns (None, None) if unreachable.
+    Calculate the angles for both arms to reach the point (x, y).
+    Returns (None, None) if the point is unreachable.
     """
     deltas = np.array([x, y]) - servo_positions
     distances = np.linalg.norm(deltas, axis=1)
 
-    # Reject unreachable or too-close points
+    # Check reachability
     for i, dist in enumerate(distances):
         l1, l2 = arm_lengths[i]
         if dist > (l1 + l2) or dist < abs(l1 - l2) or dist < 0.001:
-            return None, None  # Out of range or too close
+            return None, None
 
-    # Angles using cosine law
-    phis = np.arccos((arm_lengths[:, 0]**2 + distances**2 - arm_lengths[:, 1]**2) / (2 * arm_lengths[:, 0] * distances))
+    # Law of cosines
+    phis = np.arccos((arm_lengths[:, 0]**2 + distances**2 - arm_lengths[:, 1]**2) /
+                     (2 * arm_lengths[:, 0] * distances))
     betas = np.arctan2(deltas[:, 1], deltas[:, 0])
 
-    theta_1 = betas[0] - phis[0]
-    theta_2 = betas[1] + phis[1]
+    theta_1 = betas[0] - phis[0]  # Left arm
+    theta_2 = betas[1] + phis[1]  # Right arm
 
     return theta_1, theta_2
 
 def process_absolute_points(points):
     """
-    Convert absolute grid cell points to servo angles and pen positions.
+    Convert absolute grid points to servo angles and pen positions.
     """
     result = []
 
@@ -64,8 +66,12 @@ def process_absolute_points(points):
             print(f"❌ Point ({x:.2f}, {y:.2f}) is unreachable.")
             continue
 
-        pen = 30 if draw else 90
-        result.append((round(theta1, 2), round(theta2, 2), pen))
+        # Convert radians to degrees for servo control
+        angle1 = np.degrees(theta1)
+        angle2 = np.degrees(theta2)
+
+        pen = 30 if draw else 90  # Lower or raise pen
+        result.append((round(angle1), round(angle2), pen))
 
     return result
 
