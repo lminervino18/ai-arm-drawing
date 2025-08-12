@@ -2,86 +2,101 @@ import numpy as np
 
 CELL_SIZE = 0.5  # cm per cell
 
-# Servo positions on the board
-X_SERVO_2 = 10
-Y_SERVO_2 = 5
+L0 = 2.5
+L1 = 6.0
+L2 = 6.0
 
-X_SERVO_1 = 5
-Y_SERVO_1 = 5
-
-# Arm segment lengths [cm]
-left_upper_arm = 6.0
-left_lower_arm = 6.0
-right_upper_arm = 6.0
-right_lower_arm = 6.0
-
-# Servo base positions
-servo_positions = np.array([
-    [X_SERVO_1, Y_SERVO_1],
-    [X_SERVO_2, Y_SERVO_2]
-])
-
-# Segment lengths per arm
-arm_lengths = np.array([
-    [left_upper_arm, left_lower_arm],
-    [right_upper_arm, right_lower_arm]
-])
+def verify_reachability(distance):
+    """
+    Check if the point (x, y) is reachable by the robotic arms.
+    """
+    return distance <= (L1 + L2) and distance >= abs(L1 - L2)
 
 def compute_inverse_kinematics(x, y):
     """
-    Calculate the angles for both arms to reach the point (x, y).
-    Returns (None, None) if the point is unreachable.
+    Calculate the angles for the two arms to reach the point (x, y).
+    Returns (None, None) if unreachable.
     """
-    deltas = np.array([x, y]) - servo_positions
-    distances = np.linalg.norm(deltas, axis=1)
 
-    # Check reachability
-    for i, dist in enumerate(distances):
-        l1, l2 = arm_lengths[i]
-        if dist > (l1 + l2) or dist < abs(l1 - l2) or dist < 0.001:
-            return None, None
+    # The RS is in the middle of the 2 servos
+    distance_1 = np.sqrt((L0 + x)**2 + y**2)
+    distance_2 = np.sqrt((L0 - x)**2 + y**2)
+    for distance in [distance_1, distance_2]:
+        if not verify_reachability(distance):
+            return []
 
-    # Law of cosines
-    phis = np.arccos((arm_lengths[:, 0]**2 + distances**2 - arm_lengths[:, 1]**2) /
-                     (2 * arm_lengths[:, 0] * distances))
-    betas = np.arctan2(deltas[:, 1], deltas[:, 0])
+    # Argument has to be between -1 and 1 to do arccos
+    arg_1 = np.clip((L1**2 + ((L0 + x)**2 + y**2) - L2**2) / (2 * L1 * distance_1), -1, 1)
+    arg_2 = np.clip((L1**2 + ((L0 - x)**2 + y**2) - L2**2) / (2 * L1 * distance_2), -1, 1)
 
-    theta_1 = betas[0] - phis[0]  # Left arm
-    theta_2 = betas[1] + phis[1]  # Right arm
+    alpha_1 = np.arccos(arg_1)
+    alpha_2 = np.arccos(arg_2)
 
-    return theta_1, theta_2
+    beta_1 = np.arctan2(y, L0 + x)
+    beta_2 = np.arctan2(y, L0 - x)
+
+    # We have 4 solutions (theta_1 and theta_2 can go from 0 to pi)
+    theta_1 = [beta_1 - alpha_1, beta_1 + alpha_1]
+    theta_2 = [np.pi - beta_2 + alpha_2, np.pi - beta_2 - alpha_2]
+
+    solutions = []
+    for t1 in theta_1:
+        for t2 in theta_2:
+            if 0 <= t1 <= np.pi and 0 <= t2 <= np.pi: # Check if the angles are in a valid range
+                solutions.append((t1, t2))
+
+    return solutions
+
+
+def pick_solution(solutions, prev_angles):
+    """
+    Pick the best solution from the list of solutions based on the previous angles.
+    """
+    if not solutions:
+        return None
+
+    # If there's no previous angle, just return the first solution
+    if prev_angles is None:
+        return solutions[0]
+
+    # Compute the distances from the previous angles, returns the minimum
+    distances = np.linalg.norm(np.array(solutions) - np.array(prev_angles), axis=1)
+    idx_min = np.argmin(distances)
+
+    return solutions[idx_min]
+
 
 def process_absolute_points(points):
     """
-    Convert absolute grid points to servo angles and pen positions.
+    Convert absolute grid cell points to servo angles and pen positions.
     """
     result = []
+    prev_solution = None
 
     for draw, x_cell, y_cell in points:
         x = x_cell * CELL_SIZE
         y = y_cell * CELL_SIZE
 
-        theta1, theta2 = compute_inverse_kinematics(x, y)
-        if theta1 is None or theta2 is None:
-            print(f"❌ Point ({x:.2f}, {y:.2f}) is unreachable.")
+        solutions = compute_inverse_kinematics(x, y)
+        best_solution = pick_solution(solutions, prev_solution)
+        if best_solution is None:
+            print(f"Point ({x_cell}, {y_cell}) is unreachable.")
             continue
 
-        # Convert radians to degrees for servo control
-        angle1 = np.degrees(theta1)
-        angle2 = np.degrees(theta2)
+        pen = 30 if draw else 90 # Pen up/down angle
+        result.append((round(np.degrees(best_solution[0]), 0), round(np.degrees(best_solution[1]), 0), pen))
 
-        pen = 30 if draw else 90  # Lower or raise pen
-        result.append((round(angle1), round(angle2), pen))
+        prev_solution = best_solution
 
     return result
 
 if __name__ == "__main__":
     # Example test points
     points = [
-        (True, 0, 0),
-        (False, 1, 1),
-        (True, 2, 2),
-        (False, 3, 3)
+        (True, 0, 5),
+        (False, 1, 5),
+        (True, 2, 10),
+        (False, 3, 10)
     ]
 
     result = process_absolute_points(points)
