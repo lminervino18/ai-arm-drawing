@@ -89,29 +89,39 @@ def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6
 
 def process_absolute_points(points):
     result = []
+    cache = {}
+
     for draw, x_cell, y_cell in points:
-        x = x_cell * CELL_SIZE
-        y = y_cell * CELL_SIZE
-        target = (x, y)
+        key = (x_cell, y_cell)
+        if key in cache:
+            t1, t2 = cache[key]
+        else:
+            x = x_cell * CELL_SIZE
+            y = y_cell * CELL_SIZE
+            target = (x, y)
 
-        solutions = compute_inverse_kinematics(x, y)
-        best_solution, error = pick_best_solution(solutions, target)
+            solutions = compute_inverse_kinematics(x, y)
+            best_solution, error = pick_best_solution(solutions, target)
 
-        if best_solution is None or error > 0.05:
-            print(f"⚠️ No good analytical solution for point ({x_cell}, {y_cell}), trying brute force...")
-            best_solution, error = brute_force_inverse_kinematics(target)
+            if best_solution is None or error > 0.05:
+                print(f"⚠️ No good analytical solution for point ({x_cell}, {y_cell}), trying brute force...")
+                best_solution, error = brute_force_inverse_kinematics(target)
 
-        if best_solution is None:
-            print(f"❌ Point ({x_cell}, {y_cell}) unreachable even with brute force.")
-            continue
+            if best_solution is None:
+                print(f"❌ Point ({x_cell}, {y_cell}) unreachable even with brute force.")
+                continue
 
-        xk, yk = compute_kinematics(best_solution)
-        print(f"✅ FK result: ({xk:.2f}, {yk:.2f})")
-        print(f"🎯 Error²: {(xk - x)**2 + (yk - y)**2:.6f}")
-        t1, t2 = np.degrees(best_solution)
-        print(f"🦾 Angles: t1 = {t1:.2f}°, t2 = {t2:.2f}°")
+            xk, yk = compute_kinematics(best_solution)
+            print(f"✅ FK result: ({xk:.2f}, {yk:.2f})")
+            print(f"🎯 Error²: {(xk - x)**2 + (yk - y)**2:.6f}")
+            t1, t2 = np.degrees(best_solution)
+            print(f"🦾 Angles: t1 = {t1:.2f}°, t2 = {t2:.2f}°")
+
+            t1, t2 = round(t1, 1), round(t2, 1)
+            cache[key] = (t1, t2)
 
         pen = 30 if draw else 90
-        result.append((round(t1, 1), round(t2, 1), pen))
+        result.append((t1, t2, pen))
 
     return result
+
