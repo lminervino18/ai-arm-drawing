@@ -6,7 +6,7 @@ def send_angle_sequence(
     sequence: list[list[float]],
     port: str = "COM3",
     baudrate: int = 115200,
-    delay_between_steps: float = 0.5
+    delay_between_steps: float = 1
 ):
     """
     Sends a sequence of [angle1, angle2, pen] commands to Arduino over serial.
