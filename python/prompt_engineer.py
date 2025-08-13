@@ -23,7 +23,6 @@ def build_initial_prompt(user_prompt: str) -> str:
         f"Prompt: {user_prompt}"
     )
 
-
 def build_correction_prompt(previous_output: str, user_prompt: str) -> str:
     """
     Builds a second prompt asking the AI to refine the previously generated instruction list.
@@ -41,13 +40,15 @@ def build_correction_prompt(previous_output: str, user_prompt: str) -> str:
         f"\"{user_prompt}\"\n\n"
         "Your job is to refine this list to improve clarity, structure, and visual consistency.\n\n"
         "🧠 RULES FOR CORRECTION:\n"
+        "- The drawing must be centered within the grid, occupying roughly 6×4 cells.\n"
         "- The first instruction must always be draw_flag = 0 (a movement from origin, not a drawing).\n"
         "- Respect the original intent of each draw_flag — do NOT convert movements (0) into drawing (1) unless clearly incorrect.\n"
         "- Only use draw_flag = 1 when a straight-line drawing is intentional and meaningful.\n"
         "- Use draw_flag = 0 to jump between disconnected elements — do not draw unnecessary connectors.\n"
         "- Avoid overlapping or redundant lines (e.g., repeating the same point or unnecessary backtracking).\n"
-        "- Improve coherence, clarity, and symbolic integrity of the figure.\n"
-        "- Close open shapes when it adds visual meaning, and center the drawing within the grid.\n\n"
+        "- Ensure the figure follows a logical stroke order and is visually coherent.\n"
+        "- Close open shapes when it adds symbolic meaning and visual clarity.\n"
+        "- Do NOT use grid edges or corners — keep the figure away from the boundaries.\n\n"
         "📌 IMPORTANT:\n"
         "- All coordinates must be valid: 0 ≤ x < 14 and 0 ≤ y < 10.\n"
         "- Instructions must follow this format exactly: <draw_flag> <x> <y>\n"
@@ -56,3 +57,4 @@ def build_correction_prompt(previous_output: str, user_prompt: str) -> str:
         f"{previous_output.strip()}\n\n"
         "✏️ Return the corrected list below:"
     )
+

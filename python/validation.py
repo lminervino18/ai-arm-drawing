@@ -35,8 +35,6 @@ def validate_instruction_list(ai_response: str):
     if not instructions:
         print("Error: No instructions found.")
         return False
-    if instructions[0][0]:
-        print("Error: First instruction must not draw from origin.")
-        return False
+    
 
     return instructions
