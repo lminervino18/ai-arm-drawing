@@ -1,5 +1,5 @@
 from ai_client import chat_with_ai
-from servo_math import process_absolute_points
+from servo_math import process_absolute_points, CELL_SIZE
 from serial_sender import send_angle_sequence
 from plot_drawing import plot_drawing
 from plot_movement import visualize_movement
@@ -149,13 +149,11 @@ def main():
             break
 
         points = handle_prompt(user_input)
-
         plot_drawing(points)
-
         points = rescale_for_arm(points)
         angles = process_absolute_points(points)
-
-        visualize_movement(points, angles)
+        draw_flags = [draw for draw, x, y in points]
+        visualize_movement(draw_flags, angles)
 
         send_angle_sequence(angles, port="/dev/ttyUSB0")
 

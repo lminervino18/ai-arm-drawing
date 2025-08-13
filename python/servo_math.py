@@ -70,8 +70,8 @@ def pick_best_solution(solutions, target_xy, error_threshold=0.05):
 def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6):
     best = None
     min_error = float("inf")
-    for t1_deg in np.arange(0, 180, step_deg):
-        for t2_deg in np.arange(0, 180, step_deg):
+    for t1_deg in np.arange(0, 180 + step_deg, step_deg):
+        for t2_deg in np.arange(0, 180 + step_deg, step_deg):
             t1 = np.radians(t1_deg)
             t2 = np.radians(t2_deg)
             try:
@@ -85,7 +85,6 @@ def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6
             except:
                 continue
     return best, min_error
-
 
 
 def process_absolute_points(points):
@@ -106,7 +105,11 @@ def process_absolute_points(points):
             print(f"❌ Point ({x_cell}, {y_cell}) unreachable even with brute force.")
             continue
 
+        xk, yk = compute_kinematics(best_solution)
+        print(f"✅ FK result: ({xk:.2f}, {yk:.2f})")
+        print(f"🎯 Error²: {(xk - x)**2 + (yk - y)**2:.6f}")
         t1, t2 = np.degrees(best_solution)
+        print(f"🦾 Angles: t1 = {t1:.2f}°, t2 = {t2:.2f}°")
 
         pen = 30 if draw else 90
         result.append((round(t1, 1), round(t2, 1), pen))
