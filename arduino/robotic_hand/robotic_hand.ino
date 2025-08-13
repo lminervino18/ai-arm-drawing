@@ -58,7 +58,11 @@ void loop() {
       (penAngle >= 0         && penAngle <= 180);
 
   if (parsed == 3 && rangesOk) {
-    // Write positions
+     // Clamp to safe limits
+    angle1 = constrain(angle1, MIN_SERVO_1, MAX_SERVO_CONFIG);
+    angle2 = constrain(angle2, 0, MAX_SERVO_2);
+    penAngle = constrain(penAngle, 0, 180);
+
     leftShoulder.write(angle1);
     rightShoulder.write(angle2);
     pen.write(penAngle);
