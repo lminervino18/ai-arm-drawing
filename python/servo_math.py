@@ -1,104 +1,114 @@
 import numpy as np
 
 CELL_SIZE = 0.5  # cm per cell
-
-L0 = 2.5
-L1 = 6.0
-L2 = 6.0
-
-def verify_reachability(distance):
-    """
-    Check if the point (x, y) is reachable by the robotic arms.
-    """
-    return distance <= (L1 + L2) and distance >= abs(L1 - L2)
+L0 = 1.3
+L1 = 4.0
+L2 = 5.0
 
 def compute_inverse_kinematics(x, y):
-    """
-    Calculate the angles for the two arms to reach the point (x, y).
-    Returns (None, None) if unreachable.
-    """
+    d1 = np.hypot(L0 + x, y)
+    d2 = np.hypot(L0 - x, y)
 
-    # The RS is in the middle of the 2 servos
-    distance_1 = np.sqrt((L0 + x)**2 + y**2)
-    distance_2 = np.sqrt((L0 - x)**2 + y**2)
-    for distance in [distance_1, distance_2]:
-        if not verify_reachability(distance):
-            return []
+    cos_a1 = np.clip((L1**2 + d1**2 - L2**2) / (2 * L1 * d1), -1, 1)
+    cos_a2 = np.clip((L1**2 + d2**2 - L2**2) / (2 * L1 * d2), -1, 1)
 
-    # Argument has to be between -1 and 1 to do arccos
-    arg_1 = np.clip((L1**2 + ((L0 + x)**2 + y**2) - L2**2) / (2 * L1 * distance_1), -1, 1)
-    arg_2 = np.clip((L1**2 + ((L0 - x)**2 + y**2) - L2**2) / (2 * L1 * distance_2), -1, 1)
+    a1 = np.arccos(cos_a1)
+    a2 = np.arccos(cos_a2)
 
-    alpha_1 = np.arccos(arg_1)
-    alpha_2 = np.arccos(arg_2)
+    b1 = np.arctan2(y, L0 + x)
+    b2 = np.arctan2(y, L0 - x)
 
-    beta_1 = np.arctan2(y, L0 + x)
-    beta_2 = np.arctan2(y, L0 - x)
+    t1_options = [b1 - a1, b1 + a1]
+    t2_options = [np.pi - b2 + a2, np.pi - b2 - a2]
 
-    # We have 4 solutions (theta_1 and theta_2 can go from 0 to pi)
-    theta_1 = [beta_1 - alpha_1, beta_1 + alpha_1]
-    theta_2 = [np.pi - beta_2 + alpha_2, np.pi - beta_2 - alpha_2]
-
-    solutions = []
-    for t1 in theta_1:
-        for t2 in theta_2:
-            if 0 <= t1 <= np.pi and 0 <= t2 <= np.pi: # Check if the angles are in a valid range
-                solutions.append((t1, t2))
-
-    return solutions
+    valid = [
+        (t1, t2)
+        for t1 in t1_options
+        for t2 in t2_options
+        if 0 <= t1 <= np.pi and 0 <= t2 <= np.pi
+    ]
+    return valid
 
 
-def pick_solution(solutions, prev_angles):
-    """
-    Pick the best solution from the list of solutions based on the previous angles.
-    """
+def compute_kinematics(angles):
+    theta1, theta2 = angles
+    m = 2 * L0 + L2 * (np.cos(theta2) - np.cos(theta1))
+    n = L1 * np.abs(np.sin(theta1) - np.sin(theta2))
+
+    phi1 = np.arccos(np.clip(np.sqrt(m**2 + n**2) / (2 * L2), -1, 1))
+    phi2 = np.arctan2(n, m)
+
+    alpha1 = phi1 + phi2
+    alpha2 = np.pi - phi1 + phi2
+
+    x1 = -L0 + L1 * np.cos(theta1) + L2 * np.cos(alpha1)
+    y1 =      L1 * np.sin(theta1) + L2 * np.sin(alpha1)
+
+    x2 =  L0 + L1 * np.cos(theta2) + L2 * np.cos(alpha2)
+    y2 =      L1 * np.sin(theta2) + L2 * np.sin(alpha2)
+
+    return ((x1 + x2) / 2, (y1 + y2) / 2)
+
+
+def pick_best_solution(solutions, target_xy, error_threshold=0.05):
     if not solutions:
-        return None
+        return None, float("inf")
+    min_error = float("inf")
+    best = None
+    for s in solutions:
+        try:
+            xk, yk = compute_kinematics(s)
+            err = (xk - target_xy[0])**2 + (yk - target_xy[1])**2
+            if err < min_error:
+                min_error = err
+                best = s
+        except Exception:
+            continue
+    return (best, min_error)
 
-    # If there's no previous angle, just return the first solution
-    if prev_angles is None:
-        return solutions[0]
 
-    # Compute the distances from the previous angles, returns the minimum
-    distances = np.linalg.norm(np.array(solutions) - np.array(prev_angles), axis=1)
-    idx_min = np.argmin(distances)
+def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6):
+    best = None
+    min_error = float("inf")
+    for t1_deg in np.arange(0, 180, step_deg):
+        for t2_deg in np.arange(0, 180, step_deg):
+            t1 = np.radians(t1_deg)
+            t2 = np.radians(t2_deg)
+            try:
+                xk, yk = compute_kinematics((t1, t2))
+                err = (xk - target_xy[0])**2 + (yk - target_xy[1])**2
+                if err < min_error:
+                    min_error = err
+                    best = (t1, t2)
+                    if err <= error_threshold:
+                        return best, min_error
+            except:
+                continue
+    return best, min_error
 
-    return solutions[idx_min]
 
 
 def process_absolute_points(points):
-    """
-    Convert absolute grid cell points to servo angles and pen positions.
-    """
     result = []
-    prev_solution = None
-
     for draw, x_cell, y_cell in points:
         x = x_cell * CELL_SIZE
         y = y_cell * CELL_SIZE
+        target = (x, y)
 
         solutions = compute_inverse_kinematics(x, y)
-        best_solution = pick_solution(solutions, prev_solution)
+        best_solution, error = pick_best_solution(solutions, target)
+
+        if best_solution is None or error > 0.05:
+            print(f"⚠️ No good analytical solution for point ({x_cell}, {y_cell}), trying brute force...")
+            best_solution, error = brute_force_inverse_kinematics(target)
+
         if best_solution is None:
-            print(f"Point ({x_cell}, {y_cell}) is unreachable.")
+            print(f"❌ Point ({x_cell}, {y_cell}) unreachable even with brute force.")
             continue
 
-        pen = 30 if draw else 90 # Pen up/down angle
-        result.append((round(np.degrees(best_solution[0]), 0), round(np.degrees(best_solution[1]), 0), pen))
+        t1, t2 = np.degrees(best_solution)
 
-        prev_solution = best_solution
+        pen = 30 if draw else 90
+        result.append((round(t1, 1), round(t2, 1), pen))
 
     return result
-
-if __name__ == "__main__":
-    # Example test points
-    points = [
-        (True, 0, 5),
-        (False, 1, 5),
-        (True, 2, 10),
-        (False, 3, 10)
-    ]
-
-    result = process_absolute_points(points)
-    for angles in result:
-        print(f"Angles: {angles[0]}°, {angles[1]}°, Pen: {angles[2]}")

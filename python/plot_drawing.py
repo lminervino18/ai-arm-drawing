@@ -39,10 +39,12 @@ def plot_drawing(absolute_points):
         elif len(stroke) == 1:
             ax.plot(*stroke[0], marker='o', color='black')
 
-    # Optional: show starting point
     ax.plot(0, 0, marker='o', color='red', label='Start')
     ax.legend()
-    plt.show()
+    plt.show(block=False)
+
+    input("🟥 Press Enter to close drawing window...")
+    plt.close(fig)
 
 if __name__ == "__main__":
     absolute_points = [
