@@ -111,7 +111,7 @@ def process_absolute_points(points):
         t1, t2 = np.degrees(best_solution)
         print(f"🦾 Angles: t1 = {t1:.2f}°, t2 = {t2:.2f}°")
 
-        pen = 30 if draw else 90
+        pen = 125 if draw else 90
         result.append((round(t1, 1), round(t2, 1), pen))
 
     return result
