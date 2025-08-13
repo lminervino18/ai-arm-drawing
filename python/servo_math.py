@@ -32,29 +32,63 @@ def compute_kinematics(angles: tuple[float, float]) -> tuple[float, float]:
     return ((x1 + x2) / 2, (y1 + y2) / 2)
 
 
-def brute_force_inverse_kinematics(target_xy: tuple[float, float], step_deg=0.5, error_threshold=1e-6):
+def brute_force_inverse_kinematics(target_xy: tuple[float, float], step_deg=0.5, error_threshold=1e-6, retry_error_threshold=0.01):
     """
-    Searches the joint space for a valid solution using brute force.
+    Tries to find joint angles (t1, t2) that reach target_xy using brute force.
+    First pass: search from high angles to low.
+    If the error is still too high, retry from low to high.
     """
-    best = None
-    min_error = float("inf")
+    def search_angles(reverse=True):
+        best = None
+        min_error = float("inf")
+        t_range = np.arange(180, -step_deg, -step_deg) if reverse else np.arange(0, 180 + step_deg, step_deg)
 
+        for t1_deg in t_range:
+            for t2_deg in np.arange(0, t1_deg + step_deg, step_deg):  # ensure t1 >= t2
+                t1 = np.radians(t1_deg)
+                t2 = np.radians(t2_deg)
+                try:
+                    xk, yk = compute_kinematics((t1, t2))
+                    err = (xk - target_xy[0])**2 + (yk - target_xy[1])**2
+                    if err < min_error:
+                        min_error = err
+                        best = (t1, t2)
+                        if err <= error_threshold:
+                            return best, min_error
+                except:
+                    continue
+        return best, min_error
+
+    best, min_error = search_angles(reverse=True)
+
+    if min_error > retry_error_threshold:
+        print(f"🔁 Retrying with reversed search order (low to high)...")
+        best2, min_error2 = search_angles(reverse=False)
+        if min_error2 < min_error:
+            print(f"✅ Better result found in retry.")
+            return best2, min_error2
+        else:
+            print(f"ℹ️ Retry did not improve the result.")
+
+    return best, min_error
+
+
+def is_point_reachable_under_constraint(target_xy: tuple[float, float], step_deg=0.5, error_threshold=0.01):
+    """
+    Checks whether the given point is reachable under the physical constraint θ1 ≥ θ2.
+    """
     for t1_deg in np.arange(0, 180 + step_deg, step_deg):
-        for t2_deg in np.arange(0, 180 + step_deg, step_deg):
+        for t2_deg in np.arange(0, t1_deg + step_deg, step_deg):  # ensure t1 >= t2
             t1 = np.radians(t1_deg)
             t2 = np.radians(t2_deg)
             try:
                 xk, yk = compute_kinematics((t1, t2))
                 err = (xk - target_xy[0])**2 + (yk - target_xy[1])**2
-                if err < min_error:
-                    min_error = err
-                    best = (t1, t2)
-                    if err <= error_threshold:
-                        return best, min_error
+                if err <= error_threshold:
+                    return True
             except:
                 continue
-
-    return best, min_error
+    return False
 
 
 def process_absolute_points(points: list[tuple[bool, int, int]]) -> list[tuple[float, float, int]]:
@@ -76,7 +110,11 @@ def process_absolute_points(points: list[tuple[bool, int, int]]) -> list[tuple[f
             best_solution, error = brute_force_inverse_kinematics(target)
 
             if best_solution is None:
-                print(f"❌ Point ({x_cell}, {y_cell}) unreachable via brute force.")
+                reachable = is_point_reachable_under_constraint(target)
+                if not reachable:
+                    print(f"❌ Point ({x_cell}, {y_cell}) is physically unreachable with θ1 ≥ θ2.")
+                else:
+                    print(f"❌ Point ({x_cell}, {y_cell}) unreachable via brute force.")
                 continue
 
             xk, yk = compute_kinematics(best_solution)
