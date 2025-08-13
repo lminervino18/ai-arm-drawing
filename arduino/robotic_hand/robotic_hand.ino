@@ -1,16 +1,29 @@
 #include <Servo.h>
 
-// Servo declarations
-Servo leftShoulder;    // Servo 1
-Servo rightShoulder;   // Servo 2
-Servo pen;             // Pen up/down
+// Pins
 
-// Pin definitions
-const int SERVO_1_PIN = 9;
-const int SERVO_2_PIN = 8;
-const int PEN_SERVO_PIN = 7;
+#define SERVO_1_PIN 9
+#define SERVO_2_PIN 8
+#define PEN_SERVO_PIN 7
+
+// Servos
+
+#define INIT_POS 90
+#define NUM_SERVOS 3
+#define MAX_SERVO_CONFIG 180
+#define MIN_SERVO_1 50
+#define MAX_SERVO_2 (MAX_SERVO_CONFIG - MIN_SERVO_1)
+#define SERVO_UP 90
+#define SERVO_WRITE 125 
+
+
+// Servo declarations
+Servo leftShoulder;
+Servo rightShoulder;  
+Servo pen;            
 
 void setup() {
+  // Baud Rate
   Serial.begin(115200);
 
   // Attach servos to pins
@@ -18,10 +31,10 @@ void setup() {
   rightShoulder.attach(SERVO_2_PIN);
   pen.attach(PEN_SERVO_PIN);
 
-  // Initial neutral positions
-  leftShoulder.write(90);
-  rightShoulder.write(90);
-  pen.write(90); // Pen up by default
+  // Initial positions
+  leftShoulder.write(INIT_POS);
+  rightShoulder.write(INIT_POS);
+  pen.write(INIT_POS); 
 }
 
 void loop() {
@@ -36,20 +49,22 @@ void loop() {
     // Parse string into three integers
     int parsed = sscanf(line.c_str(), "%d %d %d", &angle1, &angle2, &penAngle);
 
-    if (parsed == 3 &&
-        angle1 >= 0 && angle1 <= 180 &&
-        angle2 >= 0 && angle2 <= 180 &&
-        penAngle >= 0 && penAngle <= 180) {
-
+    if (parsed == NUM_ANGLES &&
+       (angle1 >= MIN_SERVO_1 && angle1 <= MAX_SERVO_CONFIG) &&
+       (angle2 >= 0 && angle2 <= MAX_SERVO_2) &&
+       (penAngle == SERVO_UP || penAngle == SERVO_WRITE) &&
+       ((angle1 - angle2) > 0)) {
+        
+      
       leftShoulder.write(angle1);
       rightShoulder.write(angle2);
-      pen.write(penAngle);
-
-      delay(100);  // Give time for servos to reach target
-
+      pen.write(penAngle); 
+      
       Serial.println("OK");
-    } else {
+    } else 
       Serial.println("ERROR");
-    }
+    
   }
+
+  delay(100);
 }
