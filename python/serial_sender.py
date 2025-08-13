@@ -3,7 +3,7 @@ import time
 
 def send_angle_sequence(
     sequence,
-    port="/dev/ttyUSB0",  # Cambiar según sistema (COM3 en Windows, etc.)
+    port="COM3",  # Cambiar según sistema (COM3 en Windows, etc.)
     baudrate=115200,
     delay_between_steps=0.5
 ):

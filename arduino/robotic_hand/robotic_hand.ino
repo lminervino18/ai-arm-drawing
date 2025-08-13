@@ -6,9 +6,9 @@ Servo rightShoulder;   // Servo 2
 Servo pen;             // Pen up/down
 
 // Pin definitions
-const int SERVO_1_PIN = 3;
-const int SERVO_2_PIN = 5;
-const int PEN_SERVO_PIN = 6;
+const int SERVO_1_PIN = 9;
+const int SERVO_2_PIN = 8;
+const int PEN_SERVO_PIN = 7;
 
 void setup() {
   Serial.begin(115200);
@@ -45,11 +45,11 @@ void loop() {
       rightShoulder.write(angle2);
       pen.write(penAngle);
 
-      delay(400);  // Give time for servos to reach target
+      delay(100);  // Give time for servos to reach target
 
       Serial.println("OK");
     } else {
-      Serial.println("ERR");
+      Serial.println("ERROR");
     }
   }
 }
