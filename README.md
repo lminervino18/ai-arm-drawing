@@ -1,85 +1,89 @@
 # 🤖 AI Drawing Arm
 
-AI-powered robotic arm that interprets natural language prompts and draws symbolic figures on a 14×10 grid whiteboard using OpenAI.
+An AI-powered robotic arm that interprets natural language prompts and draws symbolic figures on a 14×10 grid using OpenAI and inverse kinematics.
 
 ---
 
-## 📝 Project Description
+## 📝 Overview
 
-**AI Drawing Arm** is a robotic system that takes natural language prompts (like "draw a frog") and autonomously creates symbolic drawings on a 14×10 grid (7×5 cm) whiteboard.  
-The pipeline uses **OpenAI's GPT** model to convert user prompts into vector-based instructions, then applies **inverse kinematics** to control a dual-arm mechanical structure with two servo motors.
+**AI Drawing Arm** is a Python-based project that takes natural language input (e.g., "draw a frog") and converts it into physical motion via a robotic arm. It uses OpenAI's GPT models to interpret user intent, generates vector instructions for drawing, validates and centers the design, and transforms it into servo angles using a dual-arm inverse kinematics system.
 
-This project combines **natural language processing**, **motion planning**, and **hardware control** to simulate intelligent robotic drawing.
+The robot then physically draws the output on a **14×10 grid** (7×5 cm) whiteboard using two servo-controlled arms and a shared pen.
 
 ---
 
-## 🧩 How It Works
+## 🧠 How It Works
 
-1. **Input:**  
-   The user writes a prompt (e.g., "draw a square").
+1. **Prompt Input**  
+   The user types a drawing command (e.g., "draw a house").
 
-2. **AI Translation:**  
-   OpenAI returns a list of vector drawing instructions, e.g.:
+2. **AI Instruction Generation**  
+   The GPT model returns a list of drawing instructions in the format:
+   ```text
+   <draw_flag> <x> <y>
    ```
-   0 2 3
-   1 4 0
-   1 0 4
-   1 -4 0
-   ```
-   - Each line: `<draw_flag> <delta_x> <delta_y>`
-   - The pen starts at (0, 0) (bottom-left of the grid).
+   - `draw_flag`: 1 = draw, 0 = move
+   - `x, y`: absolute grid positions (0–13, 0–9)
 
-3. **Validation:**  
-   Instructions are checked to ensure they stay within the 14×10 grid and are well-formed.
+3. **Validation & Refinement**
+   - Ensures the figure fits the 14×10 grid.
+   - Auto-closes open shapes for visual coherence.
+   - Rescales to robot's coordinate space.
 
-4. **Kinematics:**  
-   Each grid position is converted to `(x, y)` in cm and mapped to servo angles using inverse kinematics.
+4. **Kinematic Translation**
+   Each (x, y) grid point is mapped to (cm) and then to (θ1, θ2) servo angles using brute-force inverse kinematics.
 
-5. **Output:**  
-   A set of angles and pen commands is generated to control the robot arm.
+5. **Execution**
+   The angles and pen commands are visualized and optionally sent to an Arduino or ESP32 to control a 4DOF robotic arm.
 
 ---
 
-## 🔧 Hardware Setup
+## 🔧 Hardware Overview
 
-The system simulates or controls a 2-arm robotic mechanism, each with 2 degrees of freedom:
+| Arm       | Segment 1 (L1) | Segment 2 (L2) | Base Position      |
+|-----------|----------------|----------------|--------------------|
+| Left Arm  | 4.0 cm         | 5.0 cm         | (-1.3 cm, 0 cm)    |
+| Right Arm | 4.0 cm         | 5.0 cm         | (+1.3 cm, 0 cm)    |
 
-| Arm       | Segment 1 (Upper) | Segment 2 (Lower) | Servo Mount Location |
-|-----------|-------------------|-------------------|---------------------|
-| Left Arm  | 6.0 cm            | 6.0 cm            | (5.0 cm, 5.0 cm)    |
-| Right Arm | 6.0 cm            | 6.0 cm            | (10.0 cm, 5.0 cm)   |
-
-- Each arm consists of two servos (total 4 servos).
-- The tip of both arms converges on a shared pen mechanism.
-- A microcontroller (e.g., Arduino or ESP32) actuates the motors based on calculated angles.
+- Each arm uses 2 servo motors (4 total).
+- The arms are symmetric and converge to control a shared pen tip.
+- Controlled by Arduino or ESP32 via serial commands.
 
 ---
 
-## 🛠️ Software Stack
+## 🧰 Software Stack
 
-- **Python:** Core logic (prompting, validation, kinematics)
-- **OpenAI API:** Natural language processing
-- **NumPy:** Vector math for servo angle calculation
-- **Serial (optional):** Send data to Arduino
-
----
-
-## Features
-
-- Converts natural language into drawing commands
-- Validates instructions to ensure safe, in-bounds operation
-- Inverse kinematics for dual-arm control
-- Controls a 4DOF robotic arm with Arduino or ESP32
-- Optional GUI for live drawing preview
-- Modular codebase (AI, logic, and hardware separate)
+- **Python 3.9+**
+- **OpenAI API** – natural language → instructions
+- **NumPy** – kinematics
+- **Matplotlib** – live drawing preview
+- **PySerial** – communication with Arduino
 
 ---
 
-## Applications
+## ✅ Features
 
-- AI-assisted drawing or sketching
-- Educational demos for robotics and kinematics
-- Natural language–controlled robots
+- Natural language prompt → symbolic drawing
+- OpenAI-based refinement and validation
+- Automatic shape closure and centering
+- Brute-force inverse kinematics solver
+- Servo angle generation for dual-arm setup
+- Serial interface to Arduino or ESP32
+- Optional live visualization
+
+---
+
+## 🎯 Use Cases
+
+- Natural language–driven robotic drawing
+- Educational tool for robotics and geometry
+- Experimental platform for prompt-to-motion interfaces
+
+---
+
+## 📐 High-Level Architecture
+
+![High-level diagram](design/high-level-diagram.png)
 
 ---
 
@@ -89,89 +93,98 @@ The system simulates or controls a 2-arm robotic mechanism, each with 2 degrees 
 ai-arm-drawing/
 │
 ├── arduino/
-│   └── robotic_hand.ino          # Arduino code for servo control
+│   └── robotic_hand.ino         # Arduino servo control code
 │
 ├── design/
-│   └── arm.png                   # Robot arm illustration (for docs)
+│   └── arm.png                  # Arm diagram or high-level illustrations
 │
 ├── python/
-│   ├── ai_client.py              # OpenAI client interface
-│   ├── main.py                   # Terminal version
-│   ├── servo_math.py             # Inverse kinematics calculations
-│   ├── requirements.txt          # Python dependencies
+│   ├── main.py                  # CLI interface to drawing system
+│   ├── ai_client.py             # GPT interaction logic
+│   ├── servo_math.py            # Inverse/direct kinematics
+│   ├── serial_sender.py         # Serial port communication
+│   ├── plot_drawing.py          # Grid-based drawing preview
+│   ├── plot_movement.py         # Real-time servo movement visualization
+│   ├── prompt_engineer.py       # GPT prompt builders
+│   ├── validation.py            # Input validation logic
+│   ├── rescale.py               # Grid translation utilities
+│   ├── instruction_handler.py   # Prompt → validated points
+│   ├── config.py                # Centralized constants
+│   └── requirements.txt         # Dependencies
 │
-├── .env                          # Contains API key (not committed)
-├── .gitignore                    # Git ignore rules
-├── LICENSE                       # MIT license
-└── README.md                     # Project documentation
+├── run.sh                       # Bash script to activate env & run
+├── .env                         # API keys (not tracked)
+├── LICENSE
+└── README.md
 ```
 
---- 
+---
 
 ## 🚀 Getting Started
 
-### 1. Hardware Requirements
+### 🔌 Hardware Required
 - Arduino UNO or ESP32
-- 4 servos (e.g., MG90S)
-- Breadboard + power supply
-- Optional: Joystick module for manual mode
+- 4x Servo motors (e.g., SG90 or MG90S)
+- Breadboard + 5V power supply
+- (Optional) Pen lift mechanism (servo or magnet)
 
-### 2. Software Requirements
+### 💻 Software Requirements
 - Python 3.9+
 - Arduino IDE
 - OpenAI API key
 
-### 3. Install Python Dependencies
+### 📦 Install Dependencies
 ```bash
-pip install -r python/requirements.txt
+cd python/
+pip install -r requirements.txt
 ```
 
-### 4. Set your OpenAI API key
+### 🔑 Set Your OpenAI Key
 ```bash
-export OPENAI_API_KEY="sk-..."     # Linux / Mac
-set OPENAI_API_KEY="sk-..."        # Windows
+export OPENAI_API_KEY="sk-..."   # Unix/macOS
+set OPENAI_API_KEY="sk-..."      # Windows
 ```
-Or store it in a `.env` file:
-```
+Or use a `.env` file:
+```env
 OPENAI_API_KEY=sk-...
 ```
 
-### 5. Upload Arduino Code
-Open `arduino/robotic_hand.ino` in the Arduino IDE, choose your board and port, and upload.
+### ⬆️ Upload Arduino Code
+1. Open `arduino/robotic_hand.ino` in Arduino IDE
+2. Select board and port
+3. Upload to your device
 
-### 6. Run Python Interface
+### ▶️ Run the Drawing Interface
 ```bash
-python python/main.py              # Terminal version
-python python/ai_arm_drawing.py    # GUI version
+# Option 1: Run directly
+python python/main.py
+
+# Option 2: Use the helper script
+./run.sh
 ```
 
 ---
 
-## 📐 High-Level Architecture
-
-![High-level diagram](design/high-level-diagram.png)
+## 🧠 System Flow
 
 ```text
-User Prompt
-    │
-    ▼
-OpenAI GPT (gpt-3.5 or gpt-4)
-    │
-    ▼
-Drawing Instructions (vector format)
-    │
-    ▼
-Validation & Kinematics (Python)
-    │
-    ▼
-Servo Angles & Pen Commands
-    │
-    ▼
-Robotic Arm (Arduino/ESP32)
+[ User Prompt ]
+      ↓
+[ GPT Instruction Generation ]
+      ↓
+[ Validation + Auto-Correction ]
+      ↓
+[ Rescaling + Centering ]
+      ↓
+[ Inverse Kinematics (Brute Force) ]
+      ↓
+[ Visualization / Serial Transmission ]
+      ↓
+[ Dual Arm Robot Draws on Grid ]
 ```
 
 ---
 
-## 📄 License
+## 📜 License
 
-This project is licensed under the MIT License — see the LICENSE file.
+This project is released under the MIT License. See LICENSE for details.
