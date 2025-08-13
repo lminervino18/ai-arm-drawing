@@ -155,7 +155,7 @@ def main():
         draw_flags = [draw for draw, x, y in points]
         visualize_movement(draw_flags, angles)
 
-        send_angle_sequence(angles, port="/dev/ttyUSB0")
+        send_angle_sequence(angles, port="COM3", baudrate=115200)
 
 if __name__ == "__main__":
     main()
