@@ -16,25 +16,18 @@
 #define MAX_SERVO_2        (MAX_SERVO_CONFIG - MIN_SERVO_1)
 
 #define SERVO_SETTLE_MS     15
-#define SMOOTH_STEP_DELAY   5
-#define SMOOTH_STEP_SIZE    1
+#define SMOOTH_STEP_DELAY   5   // ms between steps
+#define SMOOTH_STEP_SIZE    1   // degrees per step
+
+#define INACTIVITY_TIMEOUT_MS 3000  // 3 segundos
 
 Servo leftShoulder;
 Servo rightShoulder;
 Servo pen;
 
-// =====================
-// Pen control
-// =====================
-#define PEN_DOWN_ANGLE      125
-#define PEN_UP_ANGLE        90
+unsigned long lastCommandTime = 0;
+bool returnedHome = false;
 
-int currentPen = PEN_UP_ANGLE;
-
-
-// =====================
-// Movement Control
-// =====================
 void smoothMove(Servo& servo, int fromAngle, int toAngle) {
   int step = (toAngle > fromAngle) ? SMOOTH_STEP_SIZE : -SMOOTH_STEP_SIZE;
   for (int angle = fromAngle; angle != toAngle; angle += step) {
@@ -44,9 +37,6 @@ void smoothMove(Servo& servo, int fromAngle, int toAngle) {
   servo.write(toAngle);
 }
 
-// =====================
-// Setup
-// =====================
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(500);
@@ -57,21 +47,23 @@ void setup() {
 
   leftShoulder.write(INIT_POS);
   rightShoulder.write(INIT_POS);
-  pen.write(PEN_UP_ANGLE);
-  currentPen = PEN_UP_ANGLE;
+  pen.write(INIT_POS);
+
+  lastCommandTime = millis();
 }
 
-// =====================
-// Loop
-// =====================
 void loop() {
-  if (!Serial.available()) {
-    if (currentPen != PEN_UP_ANGLE) {
-      smoothMove(pen, currentPen, PEN_UP_ANGLE);
-      currentPen = PEN_UP_ANGLE;
-    }
+  // Si pasó el tiempo sin recibir comandos y aún no volvió a home
+  if ((millis() - lastCommandTime > INACTIVITY_TIMEOUT_MS) && !returnedHome) {
+    smoothMove(pen, pen.read(), INIT_POS);
+    smoothMove(leftShoulder, leftShoulder.read(), INIT_POS);
+    smoothMove(rightShoulder, rightShoulder.read(), INIT_POS);
+    returnedHome = true;
+    Serial.println("TIMEOUT: RETURNED TO HOME");
     return;
   }
+
+  if (!Serial.available()) return;
 
   String line = Serial.readStringUntil('\n');
   line.trim();
@@ -92,19 +84,19 @@ void loop() {
 
     int current1 = leftShoulder.read();
     int current2 = rightShoulder.read();
+    int currentPen = pen.read();
 
     smoothMove(leftShoulder, current1, angle1);
     smoothMove(rightShoulder, current2, angle2);
-
-    int targetPen = (penAngle == PEN_DOWN_ANGLE) ? PEN_DOWN_ANGLE : PEN_UP_ANGLE;
-    if (targetPen != currentPen) {
-      smoothMove(pen, currentPen, targetPen);
-      currentPen = targetPen;
-    }
+    smoothMove(pen, currentPen, penAngle);
 
     if (SERVO_SETTLE_MS > 0) delay(SERVO_SETTLE_MS);
 
     Serial.println("OK");
+
+    // Reset timer y home flag
+    lastCommandTime = millis();
+    returnedHome = false;
   } else {
     if (parsed != 3) {
       Serial.println("ERROR: PARSE");
