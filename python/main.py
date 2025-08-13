@@ -34,10 +34,9 @@ def main():
         visualize_movement(angles)
         send_angle_sequence(angles, port="COM3", baudrate=115200)
 
-        time.sleep(1)
-        #For remarking the drawing, we can mirror the angles
-        mirrored_angles = list(reversed(angles))
-        send_angle_sequence(mirrored_angles, port="COM3", baudrate=115200)
+        # #For remarking the drawing, we can mirror the angles
+        # mirrored_angles = list(reversed(angles))
+        # send_angle_sequence(mirrored_angles, port="COM3", baudrate=115200)
 
 
 

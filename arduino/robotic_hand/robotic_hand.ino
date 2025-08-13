@@ -15,8 +15,8 @@
 #define MIN_SERVO_1         30
 #define MAX_SERVO_2        (MAX_SERVO_CONFIG - MIN_SERVO_1)
 
-#define SERVO_SETTLE_MS     15
-#define SMOOTH_STEP_DELAY   5   // ms between steps
+#define SERVO_SETTLE_MS     100
+#define SMOOTH_STEP_DELAY   35   // ms between steps
 #define SMOOTH_STEP_SIZE    1   // degrees per step
 
 #define INACTIVITY_TIMEOUT_MS 3000  // 3 segundos
@@ -90,7 +90,7 @@ void loop() {
     smoothMove(rightShoulder, current2, angle2);
     smoothMove(pen, currentPen, penAngle);
 
-    if (SERVO_SETTLE_MS > 0) delay(SERVO_SETTLE_MS);
+    delay(SERVO_SETTLE_MS);
 
     Serial.println("OK");
 
