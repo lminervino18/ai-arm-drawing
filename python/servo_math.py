@@ -1,37 +1,19 @@
 import numpy as np
 
 CELL_SIZE = 0.5  # cm per cell
+
+# Arm segment lengths (in cm)
 L0 = 1.3
 L1 = 4.0
 L2 = 5.0
 
-def compute_inverse_kinematics(x, y):
-    d1 = np.hypot(L0 + x, y)
-    d2 = np.hypot(L0 - x, y)
 
-    cos_a1 = np.clip((L1**2 + d1**2 - L2**2) / (2 * L1 * d1), -1, 1)
-    cos_a2 = np.clip((L1**2 + d2**2 - L2**2) / (2 * L1 * d2), -1, 1)
-
-    a1 = np.arccos(cos_a1)
-    a2 = np.arccos(cos_a2)
-
-    b1 = np.arctan2(y, L0 + x)
-    b2 = np.arctan2(y, L0 - x)
-
-    t1_options = [b1 - a1, b1 + a1]
-    t2_options = [np.pi - b2 + a2, np.pi - b2 - a2]
-
-    valid = [
-        (t1, t2)
-        for t1 in t1_options
-        for t2 in t2_options
-        if 0 <= t1 <= np.pi and 0 <= t2 <= np.pi
-    ]
-    return valid
-
-
-def compute_kinematics(angles):
+def compute_kinematics(angles: tuple[float, float]) -> tuple[float, float]:
+    """
+    Computes the (x, y) position from joint angles (theta1, theta2).
+    """
     theta1, theta2 = angles
+
     m = 2 * L0 + L2 * (np.cos(theta2) - np.cos(theta1))
     n = L1 * np.abs(np.sin(theta1) - np.sin(theta2))
 
@@ -50,26 +32,13 @@ def compute_kinematics(angles):
     return ((x1 + x2) / 2, (y1 + y2) / 2)
 
 
-def pick_best_solution(solutions, target_xy, error_threshold=0.05):
-    if not solutions:
-        return None, float("inf")
-    min_error = float("inf")
-    best = None
-    for s in solutions:
-        try:
-            xk, yk = compute_kinematics(s)
-            err = (xk - target_xy[0])**2 + (yk - target_xy[1])**2
-            if err < min_error:
-                min_error = err
-                best = s
-        except Exception:
-            continue
-    return (best, min_error)
-
-
-def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6):
+def brute_force_inverse_kinematics(target_xy: tuple[float, float], step_deg=0.5, error_threshold=1e-6):
+    """
+    Searches the joint space for a valid solution using brute force.
+    """
     best = None
     min_error = float("inf")
+
     for t1_deg in np.arange(0, 180 + step_deg, step_deg):
         for t2_deg in np.arange(0, 180 + step_deg, step_deg):
             t1 = np.radians(t1_deg)
@@ -84,10 +53,14 @@ def brute_force_inverse_kinematics(target_xy, step_deg=0.5, error_threshold=1e-6
                         return best, min_error
             except:
                 continue
+
     return best, min_error
 
 
-def process_absolute_points(points):
+def process_absolute_points(points: list[tuple[bool, int, int]]) -> list[tuple[float, float, int]]:
+    """
+    Converts grid points into angle sequences for the servos using brute-force inverse kinematics only.
+    """
     result = []
     cache = {}
 
@@ -100,15 +73,10 @@ def process_absolute_points(points):
             y = y_cell * CELL_SIZE
             target = (x, y)
 
-            solutions = compute_inverse_kinematics(x, y)
-            best_solution, error = pick_best_solution(solutions, target)
-
-            if best_solution is None or error > 0.05:
-                print(f"⚠️ No good analytical solution for point ({x_cell}, {y_cell}), trying brute force...")
-                best_solution, error = brute_force_inverse_kinematics(target)
+            best_solution, error = brute_force_inverse_kinematics(target)
 
             if best_solution is None:
-                print(f"❌ Point ({x_cell}, {y_cell}) unreachable even with brute force.")
+                print(f"❌ Point ({x_cell}, {y_cell}) unreachable via brute force.")
                 continue
 
             xk, yk = compute_kinematics(best_solution)
@@ -117,8 +85,9 @@ def process_absolute_points(points):
             t1, t2 = np.degrees(best_solution)
             print(f"🦾 Angles: t1 = {t1:.2f}°, t2 = {t2:.2f}°")
 
+            cache[key] = (t1, t2)
+
         pen = 125 if draw else 90
         result.append((round(t1, 1), round(t2, 1), pen))
 
     return result
-

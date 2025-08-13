@@ -1,0 +1,58 @@
+def build_initial_prompt(user_prompt: str) -> str:
+    """
+    Builds the initial AI prompt to generate a list of movement instructions.
+    """
+    return (
+        "You are a robotic arm drawing on a 14×10 grid (14 columns, 10 rows).\n"
+        "Each cell is 0.5 cm, forming a 7 cm × 5 cm whiteboard.\n\n"
+        "Your task is to convert a drawing prompt into a coherent set of movement instructions.\n"
+        "Follow this 3-step process:\n\n"
+        "1. PLAN: Decide the main points and shape layout before generating any instructions.\n"
+        "2. GENERATE: Create a list of absolute instructions in this format:\n"
+        "   <draw_flag> <x> <y>\n"
+        "   Where draw_flag is 1 to draw a line or 0 to move without drawing.\n"
+        "   Each point (x, y) must be within: 0 ≤ x < 14 and 0 ≤ y < 10.\n"
+        "   ⚠️ The first instruction must always be draw_flag = 0 (move from origin).\n"
+        "3. REVIEW AND FIX:\n"
+        "   - Ensure all points are inside grid boundaries.\n"
+        "   - The first instruction must be a movement (pen lifted) from (0, 0).\n"
+        "   - Avoid broken strokes, unfinished figures, or abrupt endings.\n"
+        "   - Avoid excessive jumping or unnecessary noise.\n\n"
+        "Only output the final list of corrected instructions, with no explanations or commentary.\n\n"
+        "---\n\n"
+        f"Prompt: {user_prompt}"
+    )
+
+
+def build_correction_prompt(previous_output: str, user_prompt: str) -> str:
+    """
+    Builds a second prompt asking the AI to refine the previously generated instruction list.
+    """
+    return (
+        "You are a visual design assistant helping improve symbolic drawings made by a robotic arm on a 14×10 grid.\n"
+        "The grid is composed of 14 columns and 10 rows (each cell is 0.5 cm), forming a 7×5 cm drawing surface.\n"
+        "The robotic arm receives absolute-position drawing instructions in this format:\n"
+        "<draw_flag> <x> <y>\n"
+        "- draw_flag: 1 = draw a straight line from the current position to (x, y)\n"
+        "- draw_flag: 0 = move without drawing (pen lifted)\n"
+        "- x and y are grid coordinates (0 ≤ x < 14, 0 ≤ y < 10)\n"
+        "- The robot always starts at (0, 0)\n\n"
+        "The following instruction list was generated from the prompt:\n"
+        f"\"{user_prompt}\"\n\n"
+        "Your job is to refine this list to improve clarity, structure, and visual consistency.\n\n"
+        "🧠 RULES FOR CORRECTION:\n"
+        "- The first instruction must always be draw_flag = 0 (a movement from origin, not a drawing).\n"
+        "- Respect the original intent of each draw_flag — do NOT convert movements (0) into drawing (1) unless clearly incorrect.\n"
+        "- Only use draw_flag = 1 when a straight-line drawing is intentional and meaningful.\n"
+        "- Use draw_flag = 0 to jump between disconnected elements — do not draw unnecessary connectors.\n"
+        "- Avoid overlapping or redundant lines (e.g., repeating the same point or unnecessary backtracking).\n"
+        "- Improve coherence, clarity, and symbolic integrity of the figure.\n"
+        "- Close open shapes when it adds visual meaning, and center the drawing within the grid.\n\n"
+        "📌 IMPORTANT:\n"
+        "- All coordinates must be valid: 0 ≤ x < 14 and 0 ≤ y < 10.\n"
+        "- Instructions must follow this format exactly: <draw_flag> <x> <y>\n"
+        "- Do NOT include any explanation, titles, or extra content — only return the corrected list.\n\n"
+        "Current instruction list:\n"
+        f"{previous_output.strip()}\n\n"
+        "✏️ Return the corrected list below:"
+    )

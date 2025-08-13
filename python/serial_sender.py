@@ -1,29 +1,30 @@
 import serial
 import time
 
+
 def send_angle_sequence(
-    sequence,
-    port="COM3",  # Cambiar según sistema (COM3 en Windows, etc.)
-    baudrate=115200,
-    delay_between_steps=0.5
+    sequence: list[list[float]],
+    port: str = "COM3",
+    baudrate: int = 115200,
+    delay_between_steps: float = 0.5
 ):
     """
-    Send a sequence of [angle1, angle2, pen] commands to Arduino over serial.
+    Sends a sequence of [angle1, angle2, pen] commands to Arduino over serial.
 
     Args:
-        sequence (list[list[int]]): List of [angle1, angle2, pen] steps
-        port (str): Serial port
-        baudrate (int): Baudrate for communication
-        delay_between_steps (float): Seconds between steps
+        sequence: List of [angle1, angle2, pen] steps
+        port: Serial port name (e.g., COM3, /dev/ttyUSB0)
+        baudrate: Serial baud rate
+        delay_between_steps: Seconds to wait between sending steps
     """
     try:
         with serial.Serial(port, baudrate, timeout=2) as ser:
             print(f"🔌 Connected to {port}")
-            time.sleep(2)  # Allow Arduino to reset
+            time.sleep(2)  # Wait for Arduino reset
 
             for i, frame in enumerate(sequence):
                 if len(frame) != 3:
-                    print(f"⚠️ Invalid frame (must have 3 angles): {frame}")
+                    print(f"⚠️ Invalid frame (must have 3 values): {frame}")
                     continue
 
                 line = " ".join(str(int(a)) for a in frame) + "\n"
@@ -34,14 +35,15 @@ def send_angle_sequence(
                 if ack == "OK":
                     print("✅ Arduino confirmed")
                 else:
-                    print(f"⚠️ No confirmation or error: '{ack}'")
+                    print(f"⚠️ No confirmation or unexpected reply: '{ack}'")
 
                 time.sleep(delay_between_steps)
 
     except Exception as e:
         print(f"❌ Serial communication error: {e}")
 
-# Example usage
+
+# Example for standalone testing
 if __name__ == "__main__":
     angle_sequence = [
         [45, 90, 30],
@@ -49,4 +51,4 @@ if __name__ == "__main__":
         [55, 80, 30]
     ]
 
-    send_angle_sequence(angle_sequence, port="/dev/ttyUSB0")  # Cambiá según tu puerto
+    send_angle_sequence(angle_sequence, port="/dev/ttyUSB0")

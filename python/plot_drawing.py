@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
+from config import GRID_WIDTH, GRID_HEIGHT
 
-GRID_WIDTH = 14
-GRID_HEIGHT = 10
 
-def plot_drawing(absolute_points):
+def plot_drawing(absolute_points: list[tuple[bool, int, int]]):
+    """
+    Plots the drawing on a 14x10 grid based on movement and draw instructions.
+    """
     strokes = []
     current_stroke = []
     current_pos = (0, 0)
@@ -21,7 +23,7 @@ def plot_drawing(absolute_points):
     if current_stroke:
         strokes.append(current_stroke)
 
-    # Draw grid
+    # Plot grid
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.set_xlim(0, GRID_WIDTH)
     ax.set_ylim(0, GRID_HEIGHT)
@@ -31,7 +33,7 @@ def plot_drawing(absolute_points):
     ax.set_aspect('equal')
     ax.set_title("Robotic Arm Drawing Simulation")
 
-    # Draw strokes
+    # Plot strokes
     for stroke in strokes:
         if len(stroke) > 1:
             xs, ys = zip(*stroke)
@@ -46,8 +48,10 @@ def plot_drawing(absolute_points):
     input("🟥 Press Enter to close drawing window...")
     plt.close(fig)
 
+
+# Standalone test
 if __name__ == "__main__":
-    absolute_points = [
+    test_points = [
         (0, 2, 1),
         (1, 6, 1),
         (1, 6, 7),
@@ -61,4 +65,4 @@ if __name__ == "__main__":
         (1, 0, 2)
     ]
 
-    plot_drawing(absolute_points)
+    plot_drawing(test_points)
