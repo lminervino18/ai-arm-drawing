@@ -31,10 +31,6 @@ void setup() {
   rightShoulder.attach(SERVO_2_PIN);
   pen.attach(PEN_SERVO_PIN);
 
-  leftShoulder.write(INIT_POS);
-  rightShoulder.write(INIT_POS);
-  pen.write(INIT_POS);
-
   // Optional: announce ready
   // Serial.println("READY");
 }
@@ -46,6 +42,10 @@ void loop() {
   line.trim();
   if (line.length() == 0) return;
 
+  leftShoulder.write(INIT_POS);
+  rightShoulder.write(INIT_POS);
+  pen.write(INIT_POS);
+  
   int angle1, angle2, penAngle;
 
   // Parse "a b c"
